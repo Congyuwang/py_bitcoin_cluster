@@ -25,6 +25,10 @@ class Cluster:
         # number of blocks
         self.block_count = self.db.get_block_count()
 
+        # total number of transactions (for tracking progress)
+        self.transaction_count = np.sum([self.db.get_block_header(i)["n_tx"]
+                                         for i in range(self.block_count)])
+
         # where to store address key_index DB
         self.path_for_address = path_for_address
 
@@ -61,15 +65,16 @@ class Cluster:
         """Build address index."""
         logging.info("extracting addresses")
         # loop over blocks
-        for block in tqdm(self.db.get_block_iter_range(self.block_count),
-                          total=self.block_count):
-            block = block['txdata']
-            # loop over each transactions iwthin each block
-            for trans in block:
-                # create index for each address, the map is stored in key_dict
-                for o in trans['output']:
-                    if o['addresses']:
-                        self._add_new_address(o['addresses'][0])
+        with tqdm(total=self.transaction_count, smoothing=0) as bar:
+            for block in self.db.get_block_iter_range(self.block_count):
+                block = block['txdata']
+                # loop over each transactions iwthin each block
+                for trans in block:
+                    # create index for each address, the map is stored in key_dict
+                    for o in trans['output']:
+                        if o['addresses']:
+                            self._add_new_address(o['addresses'][0])
+                bar.update(len(block))
 
         logging.info("creating union find")
         self.qf = WeightedQuickUnion(len(self.key_dict))
@@ -79,18 +84,19 @@ class Cluster:
         logging.info("constructing edges")
         # construct links---if address A and B simultaneously appear as inputs,
         # then A and B belongs to the same individual (linked)
-        for block in tqdm(self.db.get_block_iter_range(self.block_count, connected=True),
-                          total=self.block_count):
-            block = block['txdata']
-            for trans in block:
-                # left_index will store the link pairs in the form of [A, B]--
-                # if A and B appear in the same list (length of 2), then A and B are linked
-                left_index = [self._get_address_index(inp['addresses'][0])
-                              for inp in trans['input'] if inp['addresses']]
+        with tqdm(total=self.transaction_count, smoothing=0) as bar:
+            for block in self.db.get_block_iter_range(self.block_count, connected=True):
+                block = block['txdata']
+                for trans in block:
+                    # left_index will store the link pairs in the form of [A, B]--
+                    # if A and B appear in the same list (length of 2), then A and B are linked
+                    left_index = [self._get_address_index(inp['addresses'][0])
+                                  for inp in trans['input'] if inp['addresses']]
 
-                # add left_index (the link set) in to the global set test_edges
-                for p, q in zip(left_index[1:], left_index[:-1]):
-                    self.qf.union(p, q)
+                    # add left_index (the link set) in to the global set test_edges
+                    for p, q in zip(left_index[1:], left_index[:-1]):
+                        self.qf.union(p, q)
+                bar.update(len(block))
 
     def get_cluster(self):
         """Obtain union find result."""
