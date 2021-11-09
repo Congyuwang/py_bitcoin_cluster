@@ -18,32 +18,47 @@ import bitcoin_explorer as bit
 class Cluster:
 
     def __init__(self, path_to_bitcoin_core, path_for_address):
+
+        # read Bitcoin Core
         self.db = bit.BitcoinDB(path_to_bitcoin_core, tx_index=False)
+
+        # number of blocks
         self.block_count = self.db.get_block_count()
+
+        # where to store address key_index DB
         self.path_for_address = path_for_address
+
+        # initialize in __enter__()
         self.key_dict = None
+
+        # initialize in _extract_hash()
         self.qf = None
+
+        # counting address key index
         self.current_index = 0
 
     def __enter__(self):
-        """with interface"""
+        """`with` interface."""
         self.key_dict = dbm.open(self.path_for_address, "c")
         return self
 
     def __exit__(self, type, value, traceback):
-        """with interface"""
+        """`with` interface."""
         self.key_dict.close()
 
     def _add_new_address(self, key: str):
+        """Add a new address."""
         if key not in self.key_dict:
             # store index as le u32
             self.key_dict[key] = self.current_index.to_bytes(4, "little", signed=False)
             self.current_index += 1
 
     def _get_address_index(self, key: str) -> int:
+        """Query address index."""
         return int.from_bytes(self.key_dict[key], "little", signed=False)
 
     def _extract_hash(self):
+        """Build address index."""
         logging.info("extracting addresses")
         # loop over blocks
         for block in tqdm(self.db.get_block_iter_range(self.block_count),
@@ -60,6 +75,7 @@ class Cluster:
         self.qf = WeightedQuickUnion(len(self.key_dict))
 
     def _construct_edge(self):
+        """Execute union find."""
         logging.info("constructing edges")
         # construct links---if address A and B simultaneously appear as inputs,
         # then A and B belongs to the same individual (linked)
@@ -77,6 +93,7 @@ class Cluster:
                     self.qf.union(p, q)
 
     def get_cluster(self):
+        """Obtain union find result."""
         logging.info("reading union-find roots")
         clusters = np.zeros(self.block_count, dtype=np.int32)
         for k in range(self.block_count):
@@ -84,12 +101,29 @@ class Cluster:
         return clusters
 
     def run(self):
+        """Run main logic."""
         self._extract_hash()
         self._construct_edge()
         logging.info("finished running")
 
-    def close(self):
-        self.key_dict.close()
+
+class WeightedQuickUnion(object):
+    """Union find implementation.
+
+    Notes:
+        Updated to use numpy and numba for CPU and RAM efficiency (Congyu).
+
+    """
+
+    def __init__(self,n):
+        self.id = np.arange(n, dtype=np.int32)
+        self.sz = np.arange(n, dtype=np.int32)
+
+    def find(self,p):
+        return find_jit(self.id, p)
+
+    def union(self, p, q):
+        union_jit(self.id, self.sz, p, q)
 
 
 @njit
@@ -110,22 +144,6 @@ def union_jit(id, sz, p, q):
         else:
             id[idq] = idp
             sz[idp] += sz[idq]
-
-
-class WeightedQuickUnion(object):
-    """
-    Updated to use numpy and numba for CPU and RAM efficiency (Congyu).
-    """
-
-    def __init__(self,n):
-        self.id = np.arange(n, dtype=np.int32)
-        self.sz = np.arange(n, dtype=np.int32)
-
-    def find(self,p):
-        return find_jit(self.id, p)
-
-    def union(self, p, q):
-        union_jit(self.id, self.sz, p, q)
 
 
 if __name__ == '__main__':
