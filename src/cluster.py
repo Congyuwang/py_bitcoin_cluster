@@ -3,31 +3,45 @@
 Created on Sun May 12 22:20:08 2019
 This code refers to the quick and weighted union-find algorithm from https://www.jianshu.com/p/72da76a34db1
 This code is created for comparison with Congyu's results
-Edited by Congyu to use `bitcoin_explorer` package
-@author: psui
+Edited by Congyu to use `bitcoin_explorer` package and `dbm` storage
+@author: psui, Congyu
 """
 
 import time
 import logging
 from tqdm import tqdm
+import dbm
 import numpy as np
-import pickle as pkl
 from numba import njit
 import bitcoin_explorer as bit
 
 class Cluster:
 
-    def __init__(self, path_to_bitcoin_core):
+    def __init__(self, path_to_bitcoin_core, path_for_address):
         self.db = bit.BitcoinDB(path_to_bitcoin_core, tx_index=False)
         self.block_count = self.db.get_block_count()
-        self.key_dict = dict()
+        self.path_for_address = path_for_address
+        self.key_dict = None
         self.qf = None
         self.current_index = 0
 
-    def _add_new_address(self, key):
+    def __enter__(self):
+        """with interface"""
+        self.key_dict = dbm.open(self.path_for_address, "c")
+        return self
+
+    def __exit__(self, type, value, traceback):
+        """with interface"""
+        self.key_dict.close()
+
+    def _add_new_address(self, key: str):
         if key not in self.key_dict:
-            self.key_dict[key] = self.current_index
+            # store index as le u32
+            self.key_dict[key] = self.current_index.to_bytes(4, "little", signed=False)
             self.current_index += 1
+
+    def _get_address_index(self, key: str) -> int:
+        return int.from_bytes(self.key_dict[key], "little", signed=False)
 
     def _extract_hash(self):
         logging.info("extracting addresses")
@@ -55,7 +69,7 @@ class Cluster:
             for trans in block:
                 # left_index will store the link pairs in the form of [A, B]--
                 # if A and B appear in the same list (length of 2), then A and B are linked
-                left_index = [self.key_dict[inp['addresses'][0]]
+                left_index = [self._get_address_index(inp['addresses'][0])
                               for inp in trans['input'] if inp['addresses']]
 
                 # add left_index (the link set) in to the global set test_edges
@@ -72,6 +86,10 @@ class Cluster:
     def run(self):
         self._extract_hash()
         self._construct_edge()
+        logging.info("finished running")
+
+    def close(self):
+        self.key_dict.close()
 
 
 @njit
@@ -113,15 +131,8 @@ class WeightedQuickUnion(object):
 if __name__ == '__main__':
     then1 = time.time()
     PATH_TO_BITCOIN_CORE = "../bitcoin"
-    ws = Cluster(PATH_TO_BITCOIN_CORE)
-    ws.run()
-
-    logging.info("finished running, start dumpiing addresses dict")
-    with open("addresses.pkl", "wb") as addr:
-        pkl.dump(ws.key_dict, addr)
-
-    logging.info("start dumping cluster result")
-    np.save("cluster.npy", ws.get_cluster())
-
+    PATH_TO_ADDRESS_STORAGE = "./address"
+    with Cluster(PATH_TO_BITCOIN_CORE, PATH_TO_ADDRESS_STORAGE) as ws:
+        ws.run()
+        np.save("cluster.npy", ws.get_cluster())
     logging.info(f"finished in {time.time()-then1} seconds")
-
