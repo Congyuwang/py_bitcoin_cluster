@@ -101,8 +101,9 @@ class Cluster:
     def get_cluster(self):
         """Obtain union find result."""
         logging.info("reading union-find roots")
-        clusters = np.zeros(self.block_count, dtype=np.int32)
-        for k in range(self.block_count):
+        address_count = len(self.key_dict)
+        clusters = np.zeros(address_count, dtype=np.int32)
+        for k in range(address_count):
             clusters[k] = self.qf.find(k)
         return clusters
 
