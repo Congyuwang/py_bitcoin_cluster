@@ -3,21 +3,17 @@
 Created on Sun May 12 22:20:08 2019
 This code refers to the quick and weighted union-find algorithm from https://www.jianshu.com/p/72da76a34db1
 This code is created for comparison with Congyu's results
-Edited by Congyu to use `bitcoin_explorer` package and `dbm` storage
+Edited by Congyu to use `bitcoin_explorer` package and `rocksdict` storage
 @author: psui, Congyu
 """
 
 import time
 import logging
 from tqdm import tqdm
-from rocksdict import Rdict
+from rocksdict import Rdict, Mdict
 import numpy as np
 from numba import njit
-import shutil
 import bitcoin_explorer as bit
-
-
-TEMP_DIR = "./address_index_temp/"
 
 
 class Cluster:
@@ -51,7 +47,7 @@ class Cluster:
 
     def __enter__(self):
         """`with` interface."""
-        self.key_dict = Rdict(TEMP_DIR)
+        self.key_dict = Mdict()
         self.address = Rdict(self.path_for_address)
         return self
 
@@ -59,9 +55,7 @@ class Cluster:
         """`with` interface."""
         self.address.close()
         self.address = None
-        self.key_dict.close()
         self.key_dict = None
-        shutil.rmtree(TEMP_DIR)
 
     def _add_new_address(self, key: str):
         """Add a new address."""
