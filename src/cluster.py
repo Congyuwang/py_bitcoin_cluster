@@ -10,10 +10,15 @@ Edited by Congyu to use `bitcoin_explorer` package and `dbm` storage
 import time
 import logging
 from tqdm import tqdm
-import dbm
+from rocksdict import Rdict
 import numpy as np
 from numba import njit
+import shutil
 import bitcoin_explorer as bit
+
+
+TEMP_DIR = "./address_index_temp/"
+
 
 class Cluster:
 
@@ -35,6 +40,9 @@ class Cluster:
         # initialize in __enter__()
         self.key_dict = None
 
+        # for looking up address later
+        self.address = None
+
         # initialize in _extract_hash()
         self.qf = None
 
@@ -43,23 +51,29 @@ class Cluster:
 
     def __enter__(self):
         """`with` interface."""
-        self.key_dict = dbm.open(self.path_for_address, "c")
+        self.key_dict = Rdict(TEMP_DIR)
+        self.address = Rdict(self.path_for_address)
         return self
 
     def __exit__(self, type, value, traceback):
         """`with` interface."""
+        self.address.close()
+        self.address = None
         self.key_dict.close()
+        self.key_dict = None
+        shutil.rmtree(TEMP_DIR)
 
     def _add_new_address(self, key: str):
         """Add a new address."""
         if key not in self.key_dict:
             # store index as le u32
-            self.key_dict[key] = self.current_index.to_bytes(4, "little", signed=False)
+            self.key_dict[key] = self.current_index
+            self.address[self.current_index] = key
             self.current_index += 1
 
     def _get_address_index(self, key: str) -> int:
         """Query address index."""
-        return int.from_bytes(self.key_dict[key], "little", signed=False)
+        return self.key_dict[key]
 
     def _extract_hash(self):
         """Build address index."""
@@ -77,7 +91,7 @@ class Cluster:
                 bar.update(len(block))
 
         logging.info("creating union find")
-        self.qf = WeightedQuickUnion(len(self.key_dict))
+        self.qf = WeightedQuickUnion(self.current_index)
 
     def _construct_edge(self):
         """Execute union find."""
@@ -101,7 +115,7 @@ class Cluster:
     def get_cluster(self):
         """Obtain union find result."""
         logging.info("reading union-find roots")
-        address_count = len(self.key_dict)
+        address_count = self.current_index
         clusters = np.zeros(address_count, dtype=np.int32)
         for k in range(address_count):
             clusters[k] = self.qf.find(k)
