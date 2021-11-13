@@ -14,6 +14,7 @@ from rocksdict import Rdict, Mdict
 import numpy as np
 from numba import njit
 import bitcoin_explorer as bit
+from hashlib import md5
 
 
 class Cluster:
@@ -53,21 +54,21 @@ class Cluster:
 
     def __exit__(self, type, value, traceback):
         """`with` interface."""
-        self.address.close()
-        self.address = None
         self.key_dict = None
 
     def _add_new_address(self, key: str):
+        key_hash = md5(bytes(key, "utf-8")).digest()
         """Add a new address."""
-        if key not in self.key_dict:
+        if key_hash not in self.key_dict:
             # store index as le u32
-            self.key_dict[key] = self.current_index
+            self.key_dict[key_hash] = self.current_index
             self.address[self.current_index] = key
             self.current_index += 1
 
     def _get_address_index(self, key: str) -> int:
         """Query address index."""
-        return self.key_dict[key]
+        key_hash = md5(bytes(key, "utf-8")).digest()
+        return self.key_dict[key_hash]
 
     def _extract_hash(self):
         """Build address index."""
@@ -90,6 +91,11 @@ class Cluster:
     def _construct_edge(self):
         """Execute union find."""
         logging.info("constructing edges")
+
+        # close address storage (may release some memory)
+        self.address.close()
+        self.address = None
+
         # construct links---if address A and B simultaneously appear as inputs,
         # then A and B belongs to the same individual (linked)
         with tqdm(total=self.transaction_count, smoothing=0) as bar:
