@@ -4,6 +4,7 @@ Created on Sun May 12 22:20:08 2019
 This code refers to the quick and weighted union-find algorithm from https://www.jianshu.com/p/72da76a34db1
 This code is created for comparison with Congyu's results
 Edited by Congyu to use `bitcoin_explorer` package and `rocksdict` storage
+Edited by Congyu to use union-find with path compression from https://gist.github.com/artkpv/6f0591c01a940d6ebe1344a8efa88847
 @author: psui, Congyu
 """
 
@@ -133,12 +134,13 @@ class WeightedQuickUnion(object):
 
     Notes:
         Updated to use numpy and numba for CPU and RAM efficiency (Congyu).
+        Updated to use path-compression
 
     """
 
     def __init__(self,n):
         self.id = np.arange(n, dtype=np.int32)
-        self.sz = np.arange(n, dtype=np.int32)
+        self.sz = np.ones((n, ), dtype=np.int32)
 
     def find(self,p):
         return find_jit(self.id, p)
@@ -149,9 +151,12 @@ class WeightedQuickUnion(object):
 
 @njit
 def find_jit(id, p):
-    while (p != id[p]):
-        p = id[p]
-    return p
+    j = p
+    while (j != id[j]):
+        # path compression
+        id[j] = id[id[j]]
+        j = id[j]
+    return j
 
 
 @njit
