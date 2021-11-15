@@ -55,9 +55,9 @@ class Cluster:
         self.address = Rdict(self.path_for_address)
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, tp, value, traceback):
         """`with` interface."""
-        self.key_dict = None
+        self.key_dict.destroy()
 
     def _add_new_address(self, key: str):
         key_hash = md5(bytes(key, "utf-8")).digest()
@@ -96,7 +96,6 @@ class Cluster:
         logging.info("constructing edges")
 
         # close address storage (may release some memory)
-        self.address.close()
         self.address = None
 
         # construct links---if address A and B simultaneously appear as inputs,
@@ -140,35 +139,35 @@ class WeightedQuickUnion(object):
 
     """
 
-    def __init__(self,n):
+    def __init__(self, n):
         self.id = np.arange(n, dtype=np.int32)
-        self.sz = np.ones((n, ), dtype=np.int32)
+        self.sz = np.ones((n,), dtype=np.int32)
 
-    def find(self,p):
+    def find(self, p):
         return find_jit(self.id, p)
 
     def union(self, p, q):
         union_jit(self.id, self.sz, p, q)
 
 
-def find_jit(id, p):
+def find_jit(ids, p):
     j = p
-    while (j != id[j]):
+    while j != ids[j]:
         # path compression
-        id[j] = id[id[j]]
-        j = id[j]
+        ids[j] = ids[ids[j]]
+        j = ids[j]
     return j
 
 
-def union_jit(id, sz, p, q):
-    idp = find_jit(id, p)
-    idq = find_jit(id, q)
+def union_jit(ids, sz, p, q):
+    idp = find_jit(ids, p)
+    idq = find_jit(ids, q)
     if idp != idq:
-        if (sz[idp] < sz[idq]):
-            id[idp] = idq
+        if sz[idp] < sz[idq]:
+            ids[idp] = idq
             sz[idq] += sz[idp]
         else:
-            id[idq] = idp
+            ids[idq] = idp
             sz[idp] += sz[idq]
 
 
@@ -179,4 +178,4 @@ if __name__ == '__main__':
     with Cluster(PATH_TO_BITCOIN_CORE, PATH_TO_ADDRESS_STORAGE) as ws:
         ws.run()
         np.save("cluster.npy", ws.get_cluster())
-    logging.info(f"finished in {time.time()-then1} seconds")
+    logging.info(f"finished in {time.time() - then1} seconds")
