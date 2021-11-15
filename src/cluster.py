@@ -47,7 +47,7 @@ class Cluster:
         self.current_index = 0
 
         # directory for temporary storage of address
-        self.temp_dir = "./tmp"
+        self.temp_dir = "/tmp/address_tmp"
 
     def __enter__(self):
         """`with` interface."""
