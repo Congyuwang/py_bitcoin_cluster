@@ -13,7 +13,6 @@ import logging
 from tqdm import tqdm
 from rocksdict import Rdict
 import numpy as np
-from numba import njit
 import bitcoin_explorer as bit
 from hashlib import md5
 
@@ -152,7 +151,6 @@ class WeightedQuickUnion(object):
         union_jit(self.id, self.sz, p, q)
 
 
-@njit
 def find_jit(id, p):
     j = p
     while (j != id[j]):
@@ -162,7 +160,6 @@ def find_jit(id, p):
     return j
 
 
-@njit
 def union_jit(id, sz, p, q):
     idp = find_jit(id, p)
     idq = find_jit(id, q)
