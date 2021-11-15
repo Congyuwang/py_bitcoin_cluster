@@ -11,7 +11,7 @@ Edited by Congyu to use union-find with path compression from https://gist.githu
 import time
 import logging
 from tqdm import tqdm
-from rocksdict import Rdict, Mdict
+from rocksdict import Rdict
 import numpy as np
 from numba import njit
 import bitcoin_explorer as bit
@@ -47,9 +47,12 @@ class Cluster:
         # counting address key index
         self.current_index = 0
 
+        # directory for temporary storage of address
+        self.temp_dir = "./tmp"
+
     def __enter__(self):
         """`with` interface."""
-        self.key_dict = Mdict()
+        self.key_dict = Rdict(self.temp_dir)
         self.address = Rdict(self.path_for_address)
         return self
 
