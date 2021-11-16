@@ -14,7 +14,6 @@ from tqdm import tqdm
 from rocksdict import Rdict
 import numpy as np
 import bitcoin_explorer as bit
-from hashlib import md5
 
 
 class Cluster:
@@ -60,18 +59,16 @@ class Cluster:
         self.key_dict.destroy()
 
     def _add_new_address(self, key: str):
-        key_hash = md5(bytes(key, "utf-8")).digest()
         """Add a new address."""
-        if key_hash not in self.key_dict:
+        if key not in self.key_dict:
             # store index as le u32
-            self.key_dict[key_hash] = self.current_index
+            self.key_dict[key] = self.current_index
             self.address[self.current_index] = key
             self.current_index += 1
 
     def _get_address_index(self, key: str) -> int:
         """Query address index."""
-        key_hash = md5(bytes(key, "utf-8")).digest()
-        return self.key_dict[key_hash]
+        return self.key_dict[key]
 
     def _extract_hash(self):
         """Build address index."""
