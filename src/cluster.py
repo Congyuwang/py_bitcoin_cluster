@@ -14,6 +14,7 @@ from tqdm import tqdm
 from rocksdict import Rdict
 import numpy as np
 import bitcoin_explorer as bit
+from numba import njit
 
 
 class Cluster:
@@ -114,11 +115,7 @@ class Cluster:
     def get_cluster(self):
         """Obtain union find result."""
         logging.info("reading union-find roots")
-        address_count = self.current_index
-        clusters = np.zeros(address_count, dtype=np.int32)
-        for k in range(address_count):
-            clusters[k] = self.qf.find(k)
-        return clusters
+        return self.qf.roots()
 
     def run(self):
         """Run main logic."""
@@ -146,7 +143,11 @@ class WeightedQuickUnion(object):
     def union(self, p, q):
         union_jit(self.id, self.sz, p, q)
 
+    def roots(self):
+        return roots_jit(self.id)
 
+
+@njit
 def find_jit(ids, p):
     j = p
     while j != ids[j]:
@@ -156,6 +157,7 @@ def find_jit(ids, p):
     return j
 
 
+@njit
 def union_jit(ids, sz, p, q):
     idp = find_jit(ids, p)
     idq = find_jit(ids, q)
@@ -166,6 +168,15 @@ def union_jit(ids, sz, p, q):
         else:
             ids[idq] = idp
             sz[idp] += sz[idq]
+
+
+@njit
+def roots_jit(ids):
+    count = len(ids)
+    roots = np.zeros(count, dtype=np.int32)
+    for k in range(count):
+        roots[k] = find_jit(ids, k)
+    return roots
 
 
 if __name__ == '__main__':
