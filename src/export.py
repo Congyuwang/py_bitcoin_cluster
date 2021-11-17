@@ -27,7 +27,7 @@ def new_dat() -> dict:
 
 def append(dat, time, txid, new_data, address_map: Rdict, clusters):
     """append new data to table"""
-    addresses = dat["addresses"]
+    addresses = new_data["addresses"]
     if addresses:
         # address to integer
         address_id = address_map[addresses[0]]
