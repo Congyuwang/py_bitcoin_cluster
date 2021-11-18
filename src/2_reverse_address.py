@@ -33,5 +33,5 @@ if __name__ == '__main__':
     address_key_map = Rdict(PATH_TO_ADDRESS_KEY_MAP)
     batches = []
     for i_batch in tqdm(batch(range(len(cluster)), n=BATCH_SIZE), total=len(cluster) // BATCH_SIZE):
-        for i, address_key in zip(i_batch, address.get_batch(i_batch)):
+        for i, address_key in zip(i_batch, address.get_batch(list(i_batch))):
             address_key_map[address_key] = i
