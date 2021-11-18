@@ -9,11 +9,11 @@ from datetime import datetime
 import pandas as pd
 
 PATH_TO_BITCOIN_CORE = "../bitcoin"
-PATH_TO_ADDRESS_STORAGE = "./address"
+PATH_TO_ADDRESS_STORAGE = "./address_key_map"
 CLUSTER_FILE = "./cluster.npy"
 OUTPUT_FOLDER = Path("./output")
 INPUT_FOLDER = Path("./input")
-FILE_NAME = "{date}"
+FILE_NAME = "{}"
 
 
 def new_dat() -> dict:
@@ -76,8 +76,8 @@ if __name__ == '__main__':
     with tqdm(total=transaction_count, smoothing=0) as progress_bar:
 
         # loop over blocks
-        for block in db.get_block_iter_range(0, block_count, connected=True):
-            block_time = db.get_block(100000)["header"]["time"]
+        for block in db.get_block_iter_range(block_count, connected=True):
+            block_time = block["header"]["time"]
             current_date = datetime.fromtimestamp(block_time).date()
 
             # check if this is a new day, if so, flush data
