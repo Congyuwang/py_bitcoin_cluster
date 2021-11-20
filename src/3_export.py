@@ -80,16 +80,6 @@ if __name__ == '__main__':
         # loop over blocks
         for block in db.get_block_iter_range(block_count, connected=True):
 
-            # check if this is a new day, if so, flush data
-            if current_transaction > 0 and current_transaction % CHUNK_SIZE == 0:
-                # write data
-                write_parquet(input_data=input_dat,
-                              output_data=output_dat,
-                              tx_num=current_transaction)
-                # clear data container
-                input_dat = new_dat()
-                output_dat = new_dat()
-
             block_time = block["header"]["time"]
             # loop over transactions
             transactions = block["txdata"]
@@ -116,6 +106,16 @@ if __name__ == '__main__':
 
                 # increment current_transaction
                 current_transaction += 1
+
+                # flush this chunk of transactions
+                if current_transaction % CHUNK_SIZE == 0:
+                    # write data
+                    write_parquet(input_data=input_dat,
+                                output_data=output_dat,
+                                tx_num=current_transaction)
+                    # clear data container
+                    input_dat = new_dat()
+                    output_dat = new_dat()
 
             # increment current_block
             current_block += 1
