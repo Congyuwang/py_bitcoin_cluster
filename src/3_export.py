@@ -5,9 +5,9 @@ from rocksdict import Rdict
 import numpy as np
 import bitcoin_explorer as bit
 import os
-from datetime import datetime
 import pandas as pd
 
+CHUNK_SIZE = 1_000_000
 PATH_TO_BITCOIN_CORE = "../bitcoin"
 PATH_TO_ADDRESS_STORAGE = "./address_key_map"
 CLUSTER_FILE = "./cluster.npy"
@@ -22,10 +22,11 @@ def new_dat() -> dict:
             "amount": [],
             "address_cluster": [],
             "address": [],
-            "transaction": []}
+            "transaction": [],
+            "block": []}
 
 
-def append(dat, time, txid, new_data, address_map: Rdict, clusters):
+def append(dat, time, txid, block_height, new_data, address_map: Rdict, clusters):
     """append new data to table"""
     addresses = new_data["addresses"]
     if addresses:
@@ -39,12 +40,13 @@ def append(dat, time, txid, new_data, address_map: Rdict, clusters):
         dat["address_cluster"].append(address_cluster)
         dat["address"].append(address_id)
         dat["transaction"].append(txid)
+        dat["block"].append(block_height)
 
 
-def write_parquet(input_data: dict, output_data, date):
+def write_parquet(input_data: dict, output_data, tx_num):
     """write to parquet."""
-    pd.DataFrame(input_data).to_parquet(INPUT_FOLDER / (FILE_NAME.format(date)))
-    pd.DataFrame(output_data).to_parquet(OUTPUT_FOLDER / (FILE_NAME.format(date)))
+    pd.DataFrame(input_data).to_parquet(INPUT_FOLDER / (FILE_NAME.format(tx_num)))
+    pd.DataFrame(output_data).to_parquet(OUTPUT_FOLDER / (FILE_NAME.format(tx_num)))
 
 
 if __name__ == '__main__':
@@ -67,7 +69,7 @@ if __name__ == '__main__':
 
     # initialize variables
     current_transaction = 0
-    previous_date = datetime.fromtimestamp(0).date()
+    current_block = 0
     input_dat = new_dat()
     output_dat = new_dat()
 
@@ -77,22 +79,18 @@ if __name__ == '__main__':
 
         # loop over blocks
         for block in db.get_block_iter_range(block_count, connected=True):
-            block_time = block["header"]["time"]
-            current_date = datetime.fromtimestamp(block_time).date()
 
             # check if this is a new day, if so, flush data
-            if current_date > previous_date:
+            if current_transaction > 0 and current_transaction % CHUNK_SIZE == 0:
                 # write data
                 write_parquet(input_data=input_dat,
                               output_data=output_dat,
-                              date=previous_date)
+                              tx_num=current_transaction)
                 # clear data container
                 input_dat = new_dat()
                 output_dat = new_dat()
-                # display progress at progress_bar
-                progress_bar.set_description(f"at {current_date}")
-            previous_date = current_date
 
+            block_time = block["header"]["time"]
             # loop over transactions
             transactions = block["txdata"]
             for trans in transactions:
@@ -101,6 +99,7 @@ if __name__ == '__main__':
                     append(dat=output_dat,
                            time=block_time,
                            txid=current_transaction,
+                           block_height=current_block,
                            new_data=o,
                            address_map=address,
                            clusters=cluster)
@@ -110,6 +109,7 @@ if __name__ == '__main__':
                     append(dat=input_dat,
                            time=block_time,
                            txid=current_transaction,
+                           block_height=current_block,
                            new_data=i,
                            address_map=address,
                            clusters=cluster)
@@ -117,10 +117,13 @@ if __name__ == '__main__':
                 # increment current_transaction
                 current_transaction += 1
 
+            # increment current_block
+            current_block += 1
+
             # show progress
             progress_bar.update(len(transactions))
 
         # flush the last date, may be incomplete
         write_parquet(input_data=input_dat,
                       output_data=output_dat,
-                      date=previous_date)
+                      tx_num=current_transaction)
