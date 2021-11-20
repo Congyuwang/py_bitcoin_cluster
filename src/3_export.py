@@ -89,8 +89,8 @@ if __name__ == '__main__':
                 # clear data container
                 input_dat = new_dat()
                 output_dat = new_dat()
-            # display progress at progress_bar
-            progress_bar.set_description(f"at {current_date}")
+                # display progress at progress_bar
+                progress_bar.set_description(f"at {current_date}")
             previous_date = current_date
 
             # loop over transactions
