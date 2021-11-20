@@ -1,5 +1,4 @@
 import logging
-import os
 from rocksdict import Rdict
 import numpy as np
 from tqdm import tqdm
@@ -20,9 +19,9 @@ BATCH_SIZE = 1000
 
 
 def batch(iterable, n=1):
-    l = len(iterable)
-    for ndx in range(0, l, n):
-        yield iterable[ndx:min(ndx + n, l)]
+    length = len(iterable)
+    for ndx in range(0, length, n):
+        yield iterable[ndx:min(ndx + n, length)]
 
 
 if __name__ == '__main__':

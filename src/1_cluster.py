@@ -78,7 +78,7 @@ class Cluster:
         with tqdm(total=self.transaction_count, smoothing=0) as bar:
             for block in self.db.get_block_iter_range(self.block_count):
                 block = block['txdata']
-                # loop over each transactions iwthin each block
+                # loop over each transactions within each block
                 for trans in block:
                     # create index for each address, the map is stored in key_dict
                     for o in trans['output']:

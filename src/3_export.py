@@ -111,8 +111,8 @@ if __name__ == '__main__':
                 if current_transaction % CHUNK_SIZE == 0:
                     # write data
                     write_parquet(input_data=input_dat,
-                                output_data=output_dat,
-                                tx_num=current_transaction)
+                                  output_data=output_dat,
+                                  tx_num=current_transaction)
                     # clear data container
                     input_dat = new_dat()
                     output_dat = new_dat()
