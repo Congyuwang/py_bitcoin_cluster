@@ -8,6 +8,7 @@ import os
 import pandas as pd
 
 CHUNK_SIZE = 1_000_000
+START_TX = CHUNK_SIZE * 316
 PATH_TO_BITCOIN_CORE = "../bitcoin"
 PATH_TO_ADDRESS_STORAGE = "./address_key_map"
 CLUSTER_FILE = "./cluster.npy"
@@ -84,6 +85,11 @@ if __name__ == '__main__':
             # loop over transactions
             transactions = block["txdata"]
             for trans in transactions:
+
+                if current_transaction < START_TX:
+                    current_transaction += 1
+                    continue
+
                 # append outputs
                 for o in trans["output"]:
                     append(dat=output_dat,
