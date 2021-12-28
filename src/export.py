@@ -1,20 +1,11 @@
 import logging
-from pathlib import Path
 from tqdm import tqdm
 from rocksdict import Rdict
 import numpy as np
 import bitcoin_explorer as bit
 import os
 import pandas as pd
-
-CHUNK_SIZE = 1_000_000
-START_TX = CHUNK_SIZE * 316
-PATH_TO_BITCOIN_CORE = "../bitcoin"
-PATH_TO_ADDRESS_STORAGE = "./address_key_map"
-CLUSTER_FILE = "./cluster.npy"
-OUTPUT_FOLDER = Path("./output")
-INPUT_FOLDER = Path("./input")
-FILE_NAME = "{}"
+from paths import *
 
 
 def new_dat() -> dict:
@@ -33,12 +24,10 @@ def append(dat, time, txid, block_height, new_data, address_map: Rdict, clusters
     if addresses:
         # address to integer
         address_id = address_map[addresses[0]]
-        # cluster of address
-        address_cluster = clusters[address_id]
         # write data to columns
         dat["time"].append(time)
         dat["amount"].append(new_data["value"])
-        dat["address_cluster"].append(address_cluster)
+        dat["address_cluster"].append(clusters[address_id])
         dat["address"].append(address_id)
         dat["transaction"].append(txid)
         dat["block"].append(block_height)
@@ -50,7 +39,7 @@ def write_parquet(input_data: dict, output_data, tx_num):
     pd.DataFrame(output_data).to_parquet(OUTPUT_FOLDER / (FILE_NAME.format(tx_num)))
 
 
-if __name__ == '__main__':
+def export():
 
     # create folders
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -86,6 +75,7 @@ if __name__ == '__main__':
             transactions = block["txdata"]
             for trans in transactions:
 
+                # start from start_tx, which defaults to 0
                 if current_transaction < START_TX:
                     current_transaction += 1
                     continue
