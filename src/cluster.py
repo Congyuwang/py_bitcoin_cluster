@@ -60,8 +60,8 @@ class Cluster:
 
     def __enter__(self):
         """`with` interface."""
-        self.key_dict = Rdict(self.temp_dir)
-        self.address = Rdict(self.path_for_address)
+        self.key_dict = Rdict(self.temp_dir, DB_OPTIONS)
+        self.address = Rdict(self.path_for_address, DB_OPTIONS)
         return self
 
     def __exit__(self, tp, value, traceback):

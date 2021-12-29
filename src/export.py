@@ -3,7 +3,6 @@ from tqdm import tqdm
 from rocksdict import Rdict
 import numpy as np
 import bitcoin_explorer as bit
-import os
 import pandas as pd
 from paths import *
 
@@ -48,7 +47,7 @@ def export():
     # data sources
     db = bit.BitcoinDB(PATH_TO_BITCOIN_CORE, tx_index=False)
     logging.info("start loading address id")
-    address = Rdict(PATH_TO_ADDRESS_STORAGE)
+    address = Rdict(PATH_TO_ADDRESS_STORAGE, DB_OPTIONS)
     logging.info("start loading cluster info")
     cluster = np.load(CLUSTER_FILE)
 
