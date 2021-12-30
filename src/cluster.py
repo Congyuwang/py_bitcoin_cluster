@@ -19,10 +19,10 @@ from paths import *
 
 class Cluster:
 
-    def __init__(self, path_to_bitcoin_core, path_for_address):
+    def __init__(self):
 
         # read Bitcoin Core
-        self.db = btc.BitcoinDB(path_to_bitcoin_core, tx_index=False)
+        self.db = btc.BitcoinDB(PATH_TO_BITCOIN_CORE, tx_index=False)
 
         # number of blocks
         self.block_count = self.db.get_block_count()
@@ -31,23 +31,15 @@ class Cluster:
         self.transaction_count = np.sum([self.db.get_block_header(i)["n_tx"]
                                          for i in range(self.block_count)])
 
-        # where to store address key_index DB
-        self.path_for_address = path_for_address
-
-        # initialize in __enter__()
-        self.key_dict = None
-
-        # for looking up address later
-        self.address = None
+        # address <-> index lookup database
+        self.address_to_index = Rdict(ADDRESS_TO_INDEX, DB_OPTIONS)
+        self.index_to_address = Rdict(INDEX_TO_ADDRESS, DB_OPTIONS)
 
         # initialize in _build_address_index()
         self.qf = None
 
         # counting address key index
         self.current_index = 0
-
-        # directory for temporary storage of address
-        self.temp_dir = "/tmp/address_tmp"
 
     def run(self):
         """Run main logic."""
@@ -58,16 +50,6 @@ class Cluster:
         np.save(CLUSTER_FILE, self.get_cluster())
         logging.info("finished clustering")
 
-    def __enter__(self):
-        """`with` interface."""
-        self.key_dict = Rdict(self.temp_dir, DB_OPTIONS)
-        self.address = Rdict(self.path_for_address, DB_OPTIONS)
-        return self
-
-    def __exit__(self, tp, value, traceback):
-        """`with` interface."""
-        self.key_dict.destroy()
-
     def build_address_index(self):
         """Build address index."""
         # loop over blocks
@@ -77,14 +59,13 @@ class Cluster:
                 # loop over each transaction within each block
                 self._add_new_addresses(block)
                 bar.update(len(block))
-
         logging.info("creating union find")
         self.qf = WeightedQuickUnion(self.current_index)
 
     def cluster_address(self):
         """Execute union find."""
-        # close address storage (may release some memory)
-        self.address = None
+        self.index_to_address.close()
+        self.index_to_address = None
 
         # if address A and B simultaneously appear as inputs,
         # then A and B belongs to the same individual (linked)
@@ -93,6 +74,7 @@ class Cluster:
                 block = block['txdata']
                 self._union_addresses_of_block(block)
                 bar.update(len(block))
+        self.address_to_index.close()
 
     def _add_new_addresses(self, blk):
         """New addresses block."""
@@ -107,7 +89,7 @@ class Cluster:
         for trans in blk:
             # left_index will store the link pairs in the form of [A, B]--
             # if A and B appear in the same list (length of 2), then A and B are linked
-            left_index = [self.key_dict[inp['addresses'][0]]
+            left_index = [self.address_to_index[inp['addresses'][0]]
                           for inp in trans['input'] if inp['addresses']]
 
             # add left_index (the link set) in to the global set test_edges
@@ -120,7 +102,7 @@ class Cluster:
 
     def _add_new_address(self, key: str):
         """Add a new address."""
-        if key not in self.key_dict:
-            self.key_dict[key] = self.current_index
-            self.address[self.current_index] = key
+        if key not in self.address_to_index:
+            self.address_to_index[key] = self.current_index
+            self.index_to_address[self.current_index] = key
             self.current_index += 1

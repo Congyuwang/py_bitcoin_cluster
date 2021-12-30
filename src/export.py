@@ -17,7 +17,8 @@ def new_dat() -> dict:
             "block": []}
 
 
-def append(dat, time, txid, block_height, new_data, address_map: Rdict, clusters):
+def append(dat,time, txid, block_height, new_data,
+           address_map: Rdict, clusters):
     """append new data to table"""
     addresses = new_data["addresses"]
     if addresses:
@@ -34,8 +35,12 @@ def append(dat, time, txid, block_height, new_data, address_map: Rdict, clusters
 
 def write_parquet(input_data: dict, output_data, tx_num):
     """write to parquet."""
-    pd.DataFrame(input_data).to_parquet(INPUT_FOLDER / (FILE_NAME.format(tx_num)))
-    pd.DataFrame(output_data).to_parquet(OUTPUT_FOLDER / (FILE_NAME.format(tx_num)))
+    pd.DataFrame(input_data).to_parquet(INPUT_FOLDER
+                                        / (FILE_NAME.format(name=tx_num,
+                                                            ext="input")))
+    pd.DataFrame(output_data).to_parquet(OUTPUT_FOLDER
+                                         / (FILE_NAME.format(name=tx_num,
+                                                             ext="output")))
 
 
 def export():
@@ -47,7 +52,7 @@ def export():
     # data sources
     db = bit.BitcoinDB(PATH_TO_BITCOIN_CORE, tx_index=False)
     logging.info("start loading address id")
-    address = Rdict(PATH_TO_ADDRESS_STORAGE, DB_OPTIONS)
+    address = Rdict(ADDRESS_TO_INDEX, DB_OPTIONS)
     logging.info("start loading cluster info")
     cluster = np.load(CLUSTER_FILE)
 
