@@ -14,7 +14,7 @@ from rocksdict import Rdict
 import numpy as np
 import bitcoin_explorer as btc
 from unionfind import WeightedQuickUnion
-from paths import *
+from settings import *
 
 
 class Cluster:
@@ -33,7 +33,6 @@ class Cluster:
 
         # address <-> index lookup database
         self.address_to_index = Rdict(ADDRESS_TO_INDEX, DB_OPTIONS)
-        self.index_to_address = Rdict(INDEX_TO_ADDRESS, DB_OPTIONS)
 
         # initialize in _build_address_index()
         self.qf = None
@@ -64,9 +63,6 @@ class Cluster:
 
     def cluster_address(self):
         """Execute union find."""
-        self.index_to_address.close()
-        self.index_to_address = None
-
         # if address A and B simultaneously appear as inputs,
         # then A and B belongs to the same individual (linked)
         with tqdm(total=self.transaction_count, smoothing=0) as bar:
@@ -104,5 +100,4 @@ class Cluster:
         """Add a new address."""
         if key not in self.address_to_index:
             self.address_to_index[key] = self.current_index
-            self.index_to_address[self.current_index] = key
             self.current_index += 1

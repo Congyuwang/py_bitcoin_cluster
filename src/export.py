@@ -4,7 +4,7 @@ from rocksdict import Rdict
 import numpy as np
 import bitcoin_explorer as bit
 import pandas as pd
-from paths import *
+from settings import *
 
 
 def new_dat() -> dict:
