@@ -17,7 +17,7 @@ def new_dat() -> dict:
             "block": []}
 
 
-def append(dat,time, txid, block_height, new_data,
+def append(dat, time, txid, block_height, new_data,
            address_map: Rdict, clusters):
     """append new data to table"""
     addresses = new_data["addresses"]
