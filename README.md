@@ -203,5 +203,5 @@ TxOut中的`ScriptPubKey`用于指定一笔UTXO的所有权。TxIn中`ScriptSig`
 
 因此一个output只要被使用了一般都可以找得到对应地址的public key，而同一个public key一定是对应同一个private key，这也许可以用来进一步做clustering（如果有需要的话）。
 
-Reference: [rust-bitcoin地址](https://github.com/rust-bitcoin/rust-bitcoin/blob/4fa477c8c1d9ede27203181873a977b33e382f5d/src/util/address.rs), 
+Reference: [rust-bitcoin地址](https://github.com/rust-bitcoin/rust-bitcoin/blob/4fa477c8c1d9ede27203181873a977b33e382f5d/src/util/address.rs),
 [An Analysis of Non-standard Bitcoin Transactions](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8525397)
